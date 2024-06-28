@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BiPlusCircle } from "react-icons/bi";
 import SearchAndAddChat from "./SearchAndAddChat";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { userStore } from "../lib/userStore";
 import { useChatStore } from "../lib/chatStore";
@@ -30,7 +30,24 @@ function ChatList() {
   }, [user.id]);
 
   const handleChangeChat = async (chatId, userItem) => {
-    changeChat(chatId, userItem);
+    try {
+      const docRef = doc(db, "userChat", user.id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const docData = docSnap.data();
+        const existingChatId = docData.chats.findIndex(
+          (i) => i.chatId === chatId
+        );
+        docData.chats[existingChatId].seenBy = true;
+
+        await updateDoc(docRef, docData);
+      }
+
+      changeChat(chatId, userItem);
+    } catch (error) {
+      console.log(error.message);
+    }
   };
 
   return (
@@ -48,7 +65,9 @@ function ChatList() {
       <div className="mt-5 flex flex-col gap-5">
         {listContact.map((item) => (
           <div
-            className="flex gap-3 items-center cursor-pointer hover:bg-slate-800 rounded-md p-2 transition ease-linear duration-150"
+            className={`flex gap-3 items-center cursor-pointer hover:bg-slate-800 rounded-md p-2 transition ease-linear duration-150 ${
+              item.seenBy === false ? "bg-blue-900" : null
+            }`}
             key={item}
             onClick={() => handleChangeChat(item.chatId, item.user)}
           >
